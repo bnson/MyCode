@@ -588,3 +588,239 @@ public class KeystrokeUtil {
             }
         }
     }
+
+
+
+
+
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package com.sps.ztest.app;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.lang.*;
+/**
+ *
+ * @author bnson
+ */
+public class CMND {
+
+    /**
+     * @param args the command line arguments
+     */
+    private static final String REGX_CHAR_NUM_VN1 = "";
+    private static final String REGX_CHAR_NUM_VN2 = "[A-Z]+";
+    
+    private static final String REGX_REMOVE_CHAR1 = "[~._-`:';\\(\\)\\[\\]\"]+";
+    
+    public static void main(String[] args) {
+        // TODO code application logic here
+        String str = " CONG HA XA HOI CHU NGIA VIET"
+                + "\ndoc lap - tu do - hanh phu"
+                + "\nGIAY CHUNG MINH NHAN DAN"
+                + "\n_S123456789 asdf "
+                + "\n.. ..BÙI NGỌC SƠN"
+                + "\nDƯƠNG"
+                + "\ndsf  asdf asdfasdf asdf"
+                + "\n: 16121986 asdf"
+                + "\nnguyen quan: thai binh";
+        System.out.println("Find Id Card Number : " + findIdCardNumber(str));   
+        System.out.println("Find Id Card Name: " + findIdCardName(str));
+        System.out.println("Find Id Card Birthday: " + findIdCardBirthday(str));
+        
+        
+        //test();
+    }
+    
+    public static void test() {
+        System.out.println(Character.isLetter('Ờ'));
+        
+        String data= "sdf?_s123456789 asdf ?tên bùi ng?c s?n?dsf asdf asdfasdf asdf?ngay sinh: 16121986 asdf?nguyen quan: thai binh";
+        String regx = "(tên)[\\s]?[^0-9]+";
+        
+        Pattern pattern = Pattern.compile(regx);
+        Matcher matcher = pattern.matcher(data);
+        if (matcher.find()) {
+            System.out.println("RS: " + matcher.group(0));
+        }
+    }
+    
+    public static String findIdCardNumber(String ocrData) {
+        String rs;
+        String ocrDataProcess;
+        Pattern pattern;
+        Matcher matcher;
+        //====
+        List<String> pRegxFind1s = new ArrayList<>();
+        pRegxFind1s.add("(số)[\\s]?[0-9]{9}");
+        pRegxFind1s.add("(sổ)[\\s]?[0-9]{9}");
+        pRegxFind1s.add("(sò)[\\s]?[0-9]{9}");
+        pRegxFind1s.add("(sô)[\\s]?[0-9]{9}");
+        pRegxFind1s.add("(sỏ)[\\s]?[0-9]{9}");
+        pRegxFind1s.add("(so)[\\s]?[0-9]{9}");
+        pRegxFind1s.add("(s?)[\\s]?[0-9]{9}");
+        pRegxFind1s.add("\\d{9}");
+        //====
+        ocrDataProcess = ocrData.replace("\n","↕");
+        ocrDataProcess = trimSpace(ocrDataProcess.toLowerCase());
+        System.out.println("ocrDataProcess1: " + ocrDataProcess);
+        rs = getValueWithListRegx(ocrDataProcess, pRegxFind1s);
+        //====
+        if (rs.isEmpty()) {
+            ocrDataProcess = ocrDataProcess.replaceAll(REGX_REMOVE_CHAR1, "");
+            System.out.println("ocrDataProcess2: " + ocrDataProcess);
+            rs = getValueWithListRegx(ocrDataProcess, pRegxFind1s);
+        }
+        //====
+        return getNumbers(rs);
+    }
+    
+    public static String findIdCardName(String ocrData) {
+        String rs;
+        String ocrDataProcess;
+        Pattern pattern;
+        Matcher matcher;
+        //====
+        List<String> pRegxFind1s = new ArrayList<>();
+        pRegxFind1s.add("(họ)[\\s]?[\\p{Lu}\\s]+");
+        pRegxFind1s.add("(tên)[\\s]?[\\p{Lu}\\s]+");
+        //====
+        ocrDataProcess = ocrData.replace("\n"," ");
+        ocrDataProcess = trimSpace(ocrDataProcess);
+        System.out.println("ocrDataProcess1: " + ocrDataProcess);
+        rs = getValueWithListRegx(ocrDataProcess, pRegxFind1s);
+        rs = rs.replaceAll("[^\\p{Lu}\\s]", " ");
+        //====
+        if (rs.isEmpty()) {
+            ocrDataProcess = ocrDataProcess.replaceAll(REGX_REMOVE_CHAR1, "");
+            System.out.println("ocrDataProcess2: " + ocrDataProcess);
+            rs = getValueWithListRegx(ocrDataProcess, pRegxFind1s);
+            rs = rs.replaceAll("[^\\p{Lu}\\s]", " ");
+        }
+        //====
+        if (rs.isEmpty()) {
+            ocrDataProcess = ocrData.replace("\n", "↕");
+            ocrDataProcess = trimSpace(ocrDataProcess);
+            ocrDataProcess = ocrDataProcess.replaceAll(REGX_REMOVE_CHAR1, "");
+            for (int i = 0; i < 4; i++) {
+                ocrDataProcess = ocrDataProcess.substring(ocrDataProcess.indexOf("↕")+1);
+            }
+            ocrDataProcess = ocrDataProcess.replace("↕", " ");
+            ocrDataProcess = trimSpace(ocrDataProcess);
+            System.out.println("ocrDataProcess3: " + ocrDataProcess);
+            pRegxFind1s.removeAll(pRegxFind1s);
+            pRegxFind1s.add("[\\p{Lu}\\s]+");
+            rs = getValueWithListRegx(ocrDataProcess, pRegxFind1s);
+        }
+        //====
+        return trimSpace(rs);        
+    }
+    
+    public static String findIdCardBirthday(String ocrData) {
+        String rs;
+        String ocrDataProcess;
+        Pattern pattern;
+        Matcher matcher;
+        //====
+        List<String> pRegxFind1s = new ArrayList<>();
+        pRegxFind1s.add("(sinh ngày)[\\s:]{2}?[0-9]{8,10}");
+        pRegxFind1s.add("(ngày)[\\s:]{2}?[0-9\\-]{8,10}");
+        pRegxFind1s.add("(ngay)[\\s:]{2}?[0-9\\-]{8,10}");
+        pRegxFind1s.add("(ng?y)[\\s:]{2}?[0-9\\-]{8,10}");
+        //====
+        ocrDataProcess = ocrData.replace("\n","↕");
+        ocrDataProcess = trimSpace(ocrDataProcess.toLowerCase());
+        System.out.println("ocrDataProcess1: " + ocrDataProcess);
+        rs = getValueWithListRegx(ocrDataProcess, pRegxFind1s);
+        //====
+        if (rs.isEmpty()) {
+            ocrDataProcess = ocrDataProcess.replaceAll(REGX_REMOVE_CHAR1, "");
+            System.out.println("ocrDataProcess2: " + ocrDataProcess);
+            rs = getValueWithListRegx(ocrDataProcess, pRegxFind1s);
+        }
+        //====
+        if (rs.isEmpty()) {
+            ocrDataProcess = ocrData.replace("\n", "↕");
+            ocrDataProcess = trimSpace(ocrDataProcess);
+            ocrDataProcess = ocrDataProcess.replaceAll(REGX_REMOVE_CHAR1, "");
+            for (int i = 0; i < 4; i++) {
+                ocrDataProcess = ocrDataProcess.substring(ocrDataProcess.indexOf("↕")+1);
+            }
+            ocrDataProcess = ocrDataProcess.replace("↕", " ");
+            ocrDataProcess = trimSpace(ocrDataProcess);
+            System.out.println("ocrDataProcess3: " + ocrDataProcess);
+            pRegxFind1s.removeAll(pRegxFind1s);
+            pRegxFind1s.add("[\\d{8}\\-]{8,10}");
+            rs = getValueWithListRegx(ocrDataProcess, pRegxFind1s);
+        }
+        //====
+        return getNumbers(rs);        
+    }
+    
+    private static String getValueWithListRegx(String str, List<String> listRegx) {
+        String rs = "";
+        Pattern pattern;
+        Matcher matcher;
+        
+        for (String regx : listRegx) {
+            pattern = Pattern.compile(regx);
+            matcher = pattern.matcher(str);
+            if (matcher.find()) {
+                rs = matcher.group(0);
+                break;
+            }
+        }
+        
+        return rs;
+    }
+    
+    private static boolean isStringUpperCase(String str) {
+        char[] charArray = str.toCharArray();
+        for (int i = 0; i < charArray.length; i++) {
+            if (!Character.isUpperCase(charArray[i])) {
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    private static boolean isStringUpperCaseCharacter(String str) {
+        char[] charArray = str.toCharArray();
+        for (int i = 0; i < charArray.length; i++) {
+            if (Character.isLetter(charArray[i])) {
+                if (!Character.isUpperCase(charArray[i])) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    } 
+    
+    private static String trimSpace(String str) {
+        return str.trim().replaceAll("\\s+", " ");
+    }
+    
+    private static String getNumbers(String str) {
+        return str.trim().replaceAll("[^\\d]", "");
+    }
+    
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
